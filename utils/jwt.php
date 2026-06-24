@@ -1,7 +1,7 @@
 <?php
 // Simple JWT implementation (HS256) - no external dependencies needed
 
-define('JWT_SECRET', 'coachcrm_super_secret_key_2026_change_in_production');
+define('JWT_SECRET', getenv('JWT_SECRET') ?: '09dfe0e12600e806512b42e7a7026a25062dbfd1bc884736d83eb857a9f80498');
 
 function base64UrlEncode(string $data): string
 {
