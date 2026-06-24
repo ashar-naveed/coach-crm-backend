@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../utils/jwt.php';
 
 class AuthService
 {
@@ -69,42 +70,36 @@ class AuthService
             return ['status' => 401, 'body' => ['success' => false, 'message' => 'Invalid email or password']];
         }
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['role']    = $user['role'];
+        $token = jwtEncode(['user_id' => $user['id'], 'role' => $user['role']]);
 
         unset($user['password']);
 
         return [
             'status' => 200,
-            'body'   => ['success' => true, 'message' => 'Login successful', 'data' => $user],
+            'body'   => ['success' => true, 'message' => 'Login successful', 'data' => $user, 'token' => $token],
         ];
     }
 
     public function logout(): array
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        session_unset();
-        session_destroy();
+        // JWT is stateless - client just discards the token
         return ['status' => 200, 'body' => ['success' => true, 'message' => 'Logged out successfully']];
     }
 
     public function me(): array
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        $token = getBearerToken();
+        if (!$token) {
+            return ['status' => 401, 'body' => ['success' => false, 'message' => 'Not authenticated']];
         }
 
-        if (empty($_SESSION['user_id'])) {
+        $payload = jwtDecode($token);
+        if (!$payload || empty($payload['user_id'])) {
             return ['status' => 401, 'body' => ['success' => false, 'message' => 'Not authenticated']];
         }
 
         $stmt = $this->db->prepare('SELECT id, name, email, role FROM users WHERE id = ?');
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt->execute([$payload['user_id']]);
         $user = $stmt->fetch();
 
         if (!$user) {
